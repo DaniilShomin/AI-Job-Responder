@@ -22,12 +22,12 @@ class VacancyProcessor:
         try:
             self.resume = load_text_file(resume_path)
         except LoadingError:
-            logger.error(f"Ошибка загрузки резюме из файла {resume_path}")
+            logger.error("Ошибка загрузки резюме из файла %s", resume_path)
             raise
         try:
             self.prompt_template = load_text_file(prompt_path)
         except LoadingError:
-            logger.error(f"Ошибка загрузки шаблона из файла {prompt_path}")
+            logger.error("Ошибка загрузки шаблона из файла %s", prompt_path)
             raise
 
     def is_correct_profession(self, vacancy_description: str) -> bool:
@@ -35,13 +35,14 @@ class VacancyProcessor:
         professions_str = ", ".join(self.CORRECT_PROFESSIONS)
         message = (
             f"Определи, относится ли следующая вакансия к профессии {professions_str}. "
+            f"И подходит для junior или midle уровня."
             f"Если относится, ответь строго 'да', иначе 'нет'.\n\n{vacancy_description}"
         )
         try:
             response = self.ai_client.get_response(message).strip().lower()
             return "да" in response
         except (TimeoutError, OpenAIError) as e:
-            logger.error(f"Ошибка при определении профессии вакансии: {e}")
+            logger.error("Ошибка при определении профессии вакансии: %s", e)
             raise
 
     def generate_response(self, vacancy_title: str, vacancy_description: str) -> str:
@@ -56,5 +57,5 @@ class VacancyProcessor:
         try:
             return self.ai_client.get_response(message)
         except (TimeoutError, OpenAIError) as e:
-            logger.error(f"Ошибка при генерации отклика на вакансию: {e}")
+            logger.error("Ошибка при генерации отклика на вакансию: %s", e)
             raise

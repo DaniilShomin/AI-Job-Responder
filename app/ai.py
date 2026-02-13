@@ -35,12 +35,12 @@ class AIClient:
                 timeout=self.timeout,
             )
         except Timeout as e:
-            logger.error(f"Таймаут при запросе к AI API: {e}")
+            logger.error("Таймаут при запросе к AI API: %s", e)
             raise TimeoutError(
                 f"AI API не отвечает в течение {self.timeout} секунд"
             ) from e
         except RequestException as e:
-            logger.error(f"Ошибка при запросе к AI API: {e}")
+            logger.error("Ошибка при запросе к AI API: %s", e)
             raise OpenAIError(f"Ошибка при запросе к AI API: {e}") from e
 
         if response.status_code != 200:
@@ -53,7 +53,9 @@ class AIClient:
                 error_message = response.text
 
             logger.error(
-                f"AI API вернут статус {response.status_code}: {error_message}"
+                "AI API вернут статус %s: %s",
+                response.status_code,
+                error_message,
             )
             raise OpenAIError(
                 f"Ошибка AI API (статус {response.status_code}): {error_message}"
@@ -63,5 +65,5 @@ class AIClient:
             data = response.json()
             return data["choices"][0]["message"]["content"]
         except (ValueError, KeyError, IndexError) as e:
-            logger.error(f"Ошибка при обработке ответа от AI API: {e}")
+            logger.error("Ошибка при обработке ответа от AI API: %s", e)
             raise OpenAIError(f"Ошибка при обработке ответа от AI API: {e}") from e

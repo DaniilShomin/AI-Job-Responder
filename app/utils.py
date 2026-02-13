@@ -22,7 +22,7 @@ def load_json(filepath: str | Path) -> list[str]:
         with path.open("r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
-        logger.warning(f"Файл {filepath} не найден. Возвращается пустой список.")
+        logger.warning("Файл %s не найден. Возвращается пустой список.", filepath)
         return []
     except PermissionError:
         error_msg = f"Нет прав доступа к файлу: {path}"
@@ -79,11 +79,11 @@ def save_json(filepath: str | Path, data: list[str]) -> None:
         raise SavingError(error_msg)
     except OSError as e:
         error_msg = f"Ошибка файловой системы: {e}"
-        logger.error(f"{error_msg}: {path}")
+        logger.error("%s: %s", error_msg, path)
         raise SavingError(f"{error_msg}: {path}")
     except Exception as e:
         error_msg = f"Неизвестная ошибка при записи: {e}"
-        logger.error(f"{error_msg}: {path}")
+        logger.error("%s: %s", error_msg, path)
         raise SavingError(f"{error_msg}: {path}")
 
 

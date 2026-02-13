@@ -29,7 +29,7 @@ def get_settings() -> Settings:
 
     settings: Settings = {
         "api_key": api_key,
-        "model": os.getenv("MODEL", "arcee-ai/trinity-large-preview:free"),
+        "model": os.getenv("MODEL", "stepfun/step-3.5-flash:free"),
         "hh_search_url": os.getenv("HH_SEARCH_URL"),
         "headless": os.getenv("HEADLESS", "true").lower() == "true",
         "timeout": int(os.getenv("TIMEOUT", "10")),

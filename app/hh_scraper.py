@@ -31,7 +31,7 @@ class HHVacancyScraper:
             self.page.wait_for_load_state()
             logger.info("Переход на hh.ru выполнен успешно")
         except Exception as e:
-            logger.error(f"Ошибка при переходе на hh.ru: {e}")
+            logger.error("Ошибка при переходе на hh.ru: %s", e)
             raise BrowserError(f"Не удалось открыть hh.ru: {e}") from e
 
     def login(self) -> None:
@@ -46,7 +46,7 @@ class HHVacancyScraper:
             else:
                 logger.info("Элемент входа не найден, возможно уже выполнен вход")
         except Exception as e:
-            logger.error(f"Ошибка при входе на hh.ru: {e}")
+            logger.error("Ошибка при входе на hh.ru: %s", e)
             raise BrowserError(f"Не удалось войти на hh.ru: {e}") from e
 
     def navigate_to_job_search(self, search_url: str | None = None) -> None:
@@ -63,7 +63,7 @@ class HHVacancyScraper:
             self.page.wait_for_load_state()
             logger.info("Переход на страницу поиска выполнен успешно")
         except Exception as e:
-            logger.error(f"Ошибка при переходе на страницу поиска: {e}")
+            logger.error("Ошибка при переходе на страницу поиска: %s", e)
             raise BrowserError(f"Не удалось открыть страницу поиска: {e}") from e
 
     def get_job_urls(self) -> list[str]:
@@ -71,7 +71,6 @@ class HHVacancyScraper:
         try:
             elements = self.page.locator(self.JOB_TITLE_SELECTOR)
             count = elements.count()
-            logger.info(f"Найдено {count} вакансий на странице")
 
             urls = []
             for i in range(count):
@@ -81,7 +80,7 @@ class HHVacancyScraper:
 
             return urls
         except Exception as e:
-            logger.error(f"Ошибка при получении URL вакансий: {e}")
+            logger.error("Ошибка при получении URL вакансий: %s", e)
             return []
 
     def get_vacancy_details(self, page: Page) -> dict[str, str] | None:
@@ -101,7 +100,7 @@ class HHVacancyScraper:
                 "description": description,
             }
         except Exception as e:
-            logger.error(f"Ошибка при получении деталей вакансии: {e}")
+            logger.error("Ошибка при получении деталей вакансии: %s", e)
             return None
 
     def open_vacancy_in_new_tab(self, vacancy_url: str) -> Page:
@@ -129,7 +128,7 @@ class HHVacancyScraper:
         try:
             if not self._is_respond_button_present(page):
                 logger.warning("Кнопка 'Откликнуться' не найдена, пропуск вакансии.")
-                return
+                raise Exception
 
             page.click("text=Откликнуться")
             random_sleep(2, 4)
@@ -137,14 +136,18 @@ class HHVacancyScraper:
             # Проверяем ограничения
             if self._is_vacancy_in_another_country(page):
                 logger.warning("Вакансия в другой стране, пропуск.")
-                return
+                raise Exception
             if self._requires_additional_questions(page):
                 logger.warning("Требуются дополнительные вопросы, пропуск.")
-                return
-
+                raise Exception
+        except Exception:
+            raise ScraperError
+        try:
             # Заполняем сопроводительное письмо, если требуется
             self._fill_cover_letter(page, response_text, random_sleep)
-
+        except Exception:
+            raise ScraperError
+        try:
             # Отправка отклика
             self._submit_response(page)
             logger.info("Отклик на вакансию успешно отправлен.")
@@ -194,11 +197,13 @@ class HHVacancyScraper:
                 textarea.fill(response_text)
             random_sleep(2, 4)
         except Exception as e:
-            logger.warning(f"Не удалось заполнить сопроводительное письмо: {e}")
+            logger.warning("Не удалось заполнить сопроводительное письмо: %s", e)
+            raise
 
     def _submit_response(self, page: Page) -> None:
         """Нажимает кнопку отправки отклика."""
         try:
             page.click(self.RESPONSE_BUTTON_SELECTOR)
         except Exception as e:
-            logger.error(f"Не удалось отправить отклик: {e}")
+            logger.error("Не удалось отправить отклик: %s", e)
+            raise
