@@ -1,16 +1,16 @@
 from playwright.sync_api import sync_playwright
 
-from .hh_scraper import HHVacancyScraper
+from .base_scraper import BaseScraper
 from .config import Settings
 
 
 class BrowserContext:
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, scraper: type[BaseScraper]):
         self.settings = settings
         self.playwright = None
         self.browser = None
         self.context = None
-        self.scraper = None
+        self.scraper = scraper
 
     def __enter__(self):
         self.playwright = sync_playwright().start()
@@ -23,8 +23,8 @@ class BrowserContext:
             self.context = self.browser.new_context()
 
         page = self.context.new_page()
-        self.scraper = HHVacancyScraper(page=page)
-        return self.scraper
+        scraper = self.scraper(page=page)
+        return scraper
 
     def __exit__(self, exc_type, exc, tb):
         try:

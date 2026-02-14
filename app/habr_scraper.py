@@ -9,60 +9,78 @@ from app.exceptions import BrowserError, ScraperError
 logger = logging.getLogger(__name__)
 
 
-class HHVacancyScraper(BaseScraper):
-    """Скрейпер вакансий с сайта hh.ru."""
+class HabrVacancyScraper(BaseScraper):
+    """Скрейпер вакансий с сайта career.habr.com."""
 
-    BASE_URL = "https://hh.ru"
-    LOGIN_SELECTOR = 'a[data-qa="Login"]'
-    SEARCH_BUTTON_SELECTOR = 'a[data-qa="applicant-index-search-all-results-button"]'
-    JOB_TITLE_SELECTOR = 'a[data-qa="serp-item__title"]'
-    VACANCY_DESC_SELECTOR = 'div[data-qa="vacancy-description"]'
-    VACANCY_TITLE_SELECTOR = 'h1[data-qa="vacancy-title"]'
-    FILL_SELECTOR = 'textarea[data-qa="vacancy-response-popup-form-letter-input"]'
-    RESPONSE_BUTTON_SELECTOR = 'button[form="RESPONSE_MODAL_FORM_ID"]'
+    BASE_URL = "https://career.habr.com"
+    LOGIN_SELECTOR = 'button[data-header-dropdown-toggle="user-auth-menu-desktop"]'
+    SEARCH_BUTTON_SELECTOR = 'a[href="https://career.habr.com/vacancies"]'
+    SEARCH_BUTTON_SELECTOR_SUITABLE = (
+        'a[href="https://career.habr.com/vacancies?type=suitable"]'
+    )
+    JOB_TITLE_SELECTOR = 'a[class="vacancy-card__title-link"]'
+    VACANCY_DESC_SELECTOR = 'div[class="vacancy-description__text"]'
+    VACANCY_TITLE_SELECTOR = 'h1[class="page-title__title"]'
+    FILL_SELECTOR = 'textarea[class="basic-textarea__textarea"]'
+    RESPONSE_BUTTON_SELECTOR = 'text="Дополнить отклик"'
 
     def __init__(self, page: Page) -> None:
         """Инициализирует скрейпер."""
         self.page = page
+        self._block_third_party_requests()
+
+    def _block_third_party_requests(self) -> None:
+        def handler(route):
+            url = route.request.url
+
+            # Блокируем facebook pixel
+            if "facebook.com/tr" in url:
+                route.abort()
+                return
+
+            route.continue_()
+
+        self.page.route("**/*", handler)
 
     def go_to_search(self) -> None:
         """Переходит на страницу поиска вакансий."""
         try:
-            self.page.goto(self.BASE_URL)
-            self.page.wait_for_load_state()
-            logger.info("Переход на hh.ru выполнен успешно")
+            self.page.goto(self.BASE_URL, wait_until="domcontentloaded")
+            logger.info("Переход на career.habr.com выполнен успешно")
         except Exception as e:
-            logger.error("Ошибка при переходе на hh.ru: %s", e)
-            raise BrowserError(f"Не удалось открыть hh.ru: {e}") from e
+            logger.error("Ошибка при переходе на career.habr.com: %s", e)
+            raise BrowserError(f"Не удалось открыть career.habr.com: {e}") from e
 
     def login(self) -> None:
         try:
             element = self.page.query_selector(self.LOGIN_SELECTOR)
             if element:
-                self.page.click("text=Войти")
-                self.page.wait_for_load_state()
-                self.page.click("text=Войти")
-                self.page.wait_for_selector('text="Резюме и профиль"')
+                # self.page.click(self.LOGIN_SELECTOR)
+                # # self.page.wait_for_load_state()
+                # self.page.click('a[href="https://career.habr.com/users/auth/tmid"]')
+                logger.info("Ожидание входа")
+                self.page.wait_for_selector('button[title="Личное меню"]')
                 logger.info("Вход выполнен успешно")
             else:
                 logger.info("Элемент входа не найден, возможно уже выполнен вход")
         except Exception as e:
-            logger.error("Ошибка при входе на hh.ru: %s", e)
-            raise BrowserError(f"Не удалось войти на hh.ru: {e}") from e
+            logger.error("Ошибка при входе на career.habr.com: %s", e)
+            raise BrowserError(f"Не удалось войти на career.habr.com: {e}") from e
 
     def navigate_to_job_search(self, search_url: str | None = None) -> None:
         try:
-            if search_url:
-                self.page.goto(search_url)
-            else:
-                # Нажимаем кнопку поиска
-                self.page.locator(
-                    self.SEARCH_BUTTON_SELECTOR
-                ).scroll_into_view_if_needed()
-                self.page.click(self.SEARCH_BUTTON_SELECTOR)
+            url = search_url or f"{self.BASE_URL}/vacancies?type=suitable"
 
-            self.page.wait_for_load_state()
+            self.page.goto(
+                url,
+                wait_until="domcontentloaded",
+            )
+
+            # ждём появление карточек вакансий
+            self.page.wait_for_selector(self.JOB_TITLE_SELECTOR)
+
             logger.info("Переход на страницу поиска выполнен успешно")
+
         except Exception as e:
             logger.error("Ошибка при переходе на страницу поиска: %s", e)
             raise BrowserError(f"Не удалось открыть страницу поиска: {e}") from e
@@ -77,7 +95,7 @@ class HHVacancyScraper(BaseScraper):
             for i in range(count):
                 href = elements.nth(i).get_attribute("href")
                 if href:
-                    urls.append(href.split("?")[0])
+                    urls.append(f"https://career.habr.com{href}")
 
             return urls
         except Exception as e:
@@ -105,11 +123,8 @@ class HHVacancyScraper(BaseScraper):
             return None
 
     def open_vacancy_in_new_tab(self, vacancy_url: str) -> Page:
-        """Открывает вакансию в новой вкладке"""
-        with self.page.expect_event("popup") as popup_info:
-            self.page.locator(f"a[href*='{vacancy_url}']").click()
-        new_tab: Page = popup_info.value
-        new_tab.wait_for_load_state()
+        new_tab = self.page.context.new_page()
+        new_tab.goto(vacancy_url, wait_until="domcontentloaded")
         new_tab.bring_to_front()
         return new_tab
 
@@ -128,12 +143,12 @@ class HHVacancyScraper(BaseScraper):
         """Основной метод для отклика на вакансию с обработкой различных случаев."""
         try:
             if not self._is_respond_button_present(page):
+                self.close_vacancy_tab(page)
                 logger.warning("Кнопка 'Откликнуться' не найдена, пропуск вакансии.")
-                raise Exception
+                return
 
             page.click("text=Откликнуться")
             random_sleep(2, 4)
-
             # Проверяем ограничения
             if self._is_vacancy_in_another_country(page):
                 logger.warning("Вакансия в другой стране, пропуск.")
@@ -146,6 +161,7 @@ class HHVacancyScraper(BaseScraper):
         try:
             # Заполняем сопроводительное письмо, если требуется
             self._fill_cover_letter(page, response_text, random_sleep)
+            random_sleep()
         except Exception:
             raise ScraperError
         try:
@@ -184,19 +200,22 @@ class HHVacancyScraper(BaseScraper):
     def _fill_cover_letter(
         self, page: Page, response_text: str, random_sleep: Callable
     ) -> None:
-        """Добавляет и заполняет сопроводительное письмо."""
         try:
-            if not self._has_cover_letter_requirement(page):
-                page.click("text=Добавить сопроводительное")
-            random_sleep(1, 2)
+            textarea = page.locator(self.FILL_SELECTOR).first
 
-            textarea = page.wait_for_selector(
-                self.FILL_SELECTOR,
-                timeout=10000,
-            )
-            if textarea:
-                textarea.fill(response_text)
-            random_sleep(2, 4)
+            # # Если textarea не прикреплена к DOM — пробуем открыть форму
+            # if textarea.count() == 0:
+            #     add_button = page.locator("text=Добавить сопроводительное")
+            #     if add_button.count() > 0:
+            #         add_button.first.click()
+
+            # Ждём только появления в DOM (НЕ visible)
+            textarea.wait_for(state="attached", timeout=7000)
+
+            # Заполняем (fill сам дождётся, пока элемент станет interactable)
+            textarea.fill(response_text)
+            random_sleep()
+
         except Exception as e:
             logger.warning("Не удалось заполнить сопроводительное письмо: %s", e)
             raise
