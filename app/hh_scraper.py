@@ -20,6 +20,7 @@ class HHVacancyScraper(BaseScraper):
     VACANCY_TITLE_SELECTOR = 'h1[data-qa="vacancy-title"]'
     FILL_SELECTOR = 'textarea[data-qa="vacancy-response-popup-form-letter-input"]'
     RESPONSE_BUTTON_SELECTOR = 'button[form="RESPONSE_MODAL_FORM_ID"]'
+    NEXT_PAGE_SELECTOR = 'a[data-qa="pager-next"]'
 
     def __init__(self, page: Page) -> None:
         """Инициализирует скрейпер."""
@@ -129,7 +130,7 @@ class HHVacancyScraper(BaseScraper):
         try:
             if not self._is_respond_button_present(page):
                 logger.warning("Кнопка 'Откликнуться' не найдена, пропуск вакансии.")
-                raise Exception
+                raise ScraperError("Кнопка 'Откликнуться' не найдена")
 
             page.click("text=Откликнуться")
             random_sleep(2, 4)
@@ -137,17 +138,21 @@ class HHVacancyScraper(BaseScraper):
             # Проверяем ограничения
             if self._is_vacancy_in_another_country(page):
                 logger.warning("Вакансия в другой стране, пропуск.")
-                raise Exception
+                raise ScraperError("Вакансия в другой стране")
             if self._requires_additional_questions(page):
                 logger.warning("Требуются дополнительные вопросы, пропуск.")
-                raise Exception
-        except Exception:
-            raise ScraperError
+                raise ScraperError("Требуются дополнительные вопросы работодателя")
+        except ScraperError:
+            raise
+        except Exception as e:
+            raise ScraperError(f"Ошибка при подготовке отклика: {e}") from e
         try:
             # Заполняем сопроводительное письмо, если требуется
             self._fill_cover_letter(page, response_text, random_sleep)
-        except Exception:
-            raise ScraperError
+        except ScraperError:
+            raise
+        except Exception as e:
+            raise ScraperError(f"Ошибка при заполнении сопроводительного письма: {e}") from e
         try:
             # Отправка отклика
             self._submit_response(page)
@@ -208,3 +213,17 @@ class HHVacancyScraper(BaseScraper):
         except Exception as e:
             logger.error("Не удалось отправить отклик: %s", e)
             raise
+
+    def has_next_page(self) -> bool:
+        """Проверяет наличие следующей страницы результатов."""
+        return self.page.locator(self.NEXT_PAGE_SELECTOR).count() > 0
+
+    def go_to_next_page(self) -> None:
+        """Переходит на следующую страницу результатов."""
+        try:
+            self.page.click(self.NEXT_PAGE_SELECTOR)
+            self.page.wait_for_load_state()
+            logger.info("Переход на следующую страницу выполнен")
+        except Exception as e:
+            logger.error("Ошибка при переходе на следующую страницу: %s", e)
+            raise BrowserError(f"Не удалось перейти на следующую страницу: {e}") from e

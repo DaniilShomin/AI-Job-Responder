@@ -41,3 +41,11 @@ class BaseScraper(ABC):
         self, page: Page, response_text: str, random_sleep: Callable
     ) -> None:
         pass
+
+    @abstractmethod
+    def has_next_page(self) -> bool:
+        pass
+
+    @abstractmethod
+    def go_to_next_page(self) -> None:
+        pass

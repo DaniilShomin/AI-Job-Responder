@@ -15,7 +15,7 @@ class BrowserContext:
     def __enter__(self):
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(
-            headless=self.settings["headless"]
+            headless=self.settings.headless
         )
         try:
             self.context = self.browser.new_context(storage_state="auth_state.json")

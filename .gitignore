@@ -19,3 +19,4 @@ prompt.txt
 resume.txt
 auth_state.json
 data.json
+.mypy_cache/

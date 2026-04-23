@@ -1,4 +1,5 @@
 import logging
+import re
 
 from app.ai import AIClient
 from app.exceptions import OpenAIError, LoadingError
@@ -35,12 +36,12 @@ class VacancyProcessor:
         professions_str = ", ".join(self.CORRECT_PROFESSIONS)
         message = (
             f"Определи, относится ли следующая вакансия к профессии {professions_str}. "
-            f"И подходит для junior или midle уровня."
-            f"Если относится, ответь строго 'да', иначе 'нет'.\n\n{vacancy_description}"
+            f"И подходит для junior или middle уровня. "
+            f"Если относится, ответь строго одним словом 'да', иначе строго одним словом 'нет'.\n\n{vacancy_description}"
         )
         try:
             response = self.ai_client.get_response(message).strip().lower()
-            return "да" in response
+            return re.fullmatch(r"да[!?.]?", response) is not None
         except (TimeoutError, OpenAIError) as e:
             logger.error("Ошибка при определении профессии вакансии: %s", e)
             raise

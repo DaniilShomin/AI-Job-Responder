@@ -3,7 +3,7 @@ import logging
 from app.ai import AIClient
 from app.browser import BrowserContext
 from app.vacancy_processor import VacancyProcessor
-from app.config import settings
+from app.config import get_settings
 from app.utils import random_sleep, load_json, save_json
 from app.exceptions import (
     OpenAIError,
@@ -19,11 +19,6 @@ from app.hh_scraper import HHVacancyScraper
 
 logger = logging.getLogger(__name__)
 
-SCRAPERS: dict[type[BaseScraper], str | None] = {
-    HHVacancyScraper: settings.get("hh_search_url"),
-    HabrVacancyScraper: settings.get("habr_search_url"),
-}
-
 
 def setup_logging(log_level: str = "INFO") -> None:
     """Настраивает логирование приложения."""
@@ -35,29 +30,36 @@ def setup_logging(log_level: str = "INFO") -> None:
 
 def run() -> None:
     setup_logging("INFO")
+    settings = get_settings()
+
     ai_client = AIClient(
-        api_key=settings["api_key"],
-        model=settings["model"],
-        timeout=settings.get("timeout", 10),
+        api_key=settings.api_key,
+        model=settings.model,
+        timeout=settings.timeout,
     )
     try:
         vacancy_processor = VacancyProcessor(
             ai_client=ai_client,
-            resume_path=settings["resume_file"],
-            prompt_path=settings["prompt_file"],
+            resume_path=settings.resume_file,
+            prompt_path=settings.prompt_file,
         )
     except LoadingError as e:
         logger.error("Ошибка инициализации процессора вакансий: %s", e)
         return
-    for scraper_ in SCRAPERS:
-        with BrowserContext(settings=settings, scraper=scraper_) as scraper:
+
+    scrapers: dict[type[BaseScraper], str | None] = {
+        HHVacancyScraper: settings.hh_search_url,
+        HabrVacancyScraper: settings.habr_search_url,
+    }
+
+    for scraper_class, search_url in scrapers.items():
+        with BrowserContext(settings=settings, scraper=scraper_class) as scraper:
             try:
                 scraper.go_to_search()
                 scraper.login()
                 random_sleep()
 
-                hh_search_url = settings.get("hh_search_url")
-                scraper.navigate_to_job_search(search_url=hh_search_url)
+                scraper.navigate_to_job_search(search_url=search_url)
                 random_sleep()
             except BrowserError as e:
                 logger.error("Ошибка браузера: %s", e)
@@ -66,7 +68,7 @@ def run() -> None:
                 logger.error("Неизвестная ошибка при инициализации скрейпера: %s", e)
                 return
 
-            filename = settings["data_file"]
+            filename = settings.data_file
             try:
                 vacancy_list = load_json(filename)
             except LoadingError as e:
@@ -75,60 +77,62 @@ def run() -> None:
 
             logger.info("Загружено элементов: %s", len(vacancy_list))
 
-            urls = scraper.get_job_urls()
-            logger.info("Найдено %s вакансий на странице", len(urls))
-            for url in urls:
-                try:
-                    if url in vacancy_list:
-                        logger.info("Вакансия уже обработана: %s", url)
-                        continue
-                    logger.info("Открытие вакансии: %s", url)
-                    new_tab = scraper.open_vacancy_in_new_tab(url)
-                    random_sleep()
-
-                    details = scraper.get_vacancy_details(new_tab)
-                    if details is None:
-                        logger.warning(
-                            "Не удалось получить детали вакансии, пропускаем."
-                        )
-                        scraper.close_vacancy_tab(new_tab)
-                        random_sleep(2, 4)
-                        continue
-
-                    if not vacancy_processor.is_correct_profession(
-                        details["description"]
-                    ):
-                        logger.info("Профессия не подходит, пропускаем вакансию.")
-                        scraper.close_vacancy_tab(new_tab)
-                        vacancy_list.append(url)
-                        random_sleep(2, 4)
-                        continue
+            while True:
+                urls = scraper.get_job_urls()
+                urls = [url for url in urls if url and "adsrv.hh.ru" not in url]
+                logger.info("Найдено %s вакансий на странице", len(urls))
+                for url in urls:
                     try:
+                        if url in vacancy_list:
+                            logger.info("Вакансия уже обработана: %s", url)
+                            continue
+                        logger.info("Открытие вакансии: %s", url)
+                        new_tab = scraper.open_vacancy_in_new_tab(url)
+                        random_sleep()
+
+                        details = scraper.get_vacancy_details(new_tab)
+                        if details is None:
+                            logger.warning(
+                                "Не удалось получить детали вакансии, пропускаем."
+                            )
+                            scraper.close_vacancy_tab(new_tab)
+                            random_sleep(2, 4)
+                            continue
+
+                        if not vacancy_processor.is_correct_profession(
+                            details["description"]
+                        ):
+                            logger.info("Профессия не подходит, пропускаем вакансию.")
+                            scraper.close_vacancy_tab(new_tab)
+                            vacancy_list.append(url)
+                            random_sleep(2, 4)
+                            continue
                         response = vacancy_processor.generate_response(
                             vacancy_title=details["title"],
                             vacancy_description=details["description"],
                         )
-                    except TimeoutError as e:
-                        logger.warning("Превышено время ожидания от AI API: %s", e)
-                        raise
-                    except OpenAIError as e:
-                        logger.warning("Ошибка AI API: %s", e)
-                        raise
-                    try:
-                        scraper.response_to_vacancy(new_tab, response, random_sleep)
-                    except ScraperError as e:
-                        logger.warning("Ошибка при отклике на вакансию: %s", e)
-                        raise
-                    random_sleep(2, 4)
-                    try:
-                        scraper.close_vacancy_tab(new_tab)
-                    except ScraperError as e:
-                        logger.warning("Ошибка при закрытии вкладки вакансии: %s", e)
-                        raise
-                    vacancy_list.append(url)
-                    random_sleep(2, 4)
-                except Exception as e:
-                    logger.warning("Ошибка при обработке вакансий: %s", e)
+                        try:
+                            scraper.response_to_vacancy(new_tab, response, random_sleep)
+                        except ScraperError as e:
+                            logger.warning("Ошибка при отклике на вакансию: %s", e)
+                            scraper.close_vacancy_tab(new_tab)
+                            raise
+                        random_sleep(2, 4)
+                        try:
+                            scraper.close_vacancy_tab(new_tab)
+                        except ScraperError as e:
+                            logger.warning("Ошибка при закрытии вкладки вакансии: %s", e)
+                            raise
+                        vacancy_list.append(url)
+                        random_sleep(2, 4)
+                    except Exception as e:
+                        logger.warning("Ошибка при обработке вакансий: %s", e)
+
+                if not scraper.has_next_page():
+                    break
+                scraper.go_to_next_page()
+                random_sleep()
+
             try:
                 save_json(filename, vacancy_list)
             except SavingError as e:

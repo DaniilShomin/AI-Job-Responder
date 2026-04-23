@@ -55,9 +55,6 @@ class HabrVacancyScraper(BaseScraper):
         try:
             element = self.page.query_selector(self.LOGIN_SELECTOR)
             if element:
-                # self.page.click(self.LOGIN_SELECTOR)
-                # # self.page.wait_for_load_state()
-                # self.page.click('a[href="https://career.habr.com/users/auth/tmid"]')
                 logger.info("Ожидание входа")
                 self.page.wait_for_selector('button[title="Личное меню"]')
                 logger.info("Вход выполнен успешно")
@@ -143,27 +140,30 @@ class HabrVacancyScraper(BaseScraper):
         """Основной метод для отклика на вакансию с обработкой различных случаев."""
         try:
             if not self._is_respond_button_present(page):
-                self.close_vacancy_tab(page)
                 logger.warning("Кнопка 'Откликнуться' не найдена, пропуск вакансии.")
-                return
+                raise ScraperError("Кнопка 'Откликнуться' не найдена")
 
             page.click("text=Откликнуться")
             random_sleep(2, 4)
             # Проверяем ограничения
             if self._is_vacancy_in_another_country(page):
                 logger.warning("Вакансия в другой стране, пропуск.")
-                raise Exception
+                raise ScraperError("Вакансия в другой стране")
             if self._requires_additional_questions(page):
                 logger.warning("Требуются дополнительные вопросы, пропуск.")
-                raise Exception
-        except Exception:
-            raise ScraperError
+                raise ScraperError("Требуются дополнительные вопросы работодателя")
+        except ScraperError:
+            raise
+        except Exception as e:
+            raise ScraperError(f"Ошибка при подготовке отклика: {e}") from e
         try:
             # Заполняем сопроводительное письмо, если требуется
             self._fill_cover_letter(page, response_text, random_sleep)
             random_sleep()
-        except Exception:
-            raise ScraperError
+        except ScraperError:
+            raise
+        except Exception as e:
+            raise ScraperError(f"Ошибка при заполнении сопроводительного письма: {e}") from e
         try:
             # Отправка отклика
             self._submit_response(page)
@@ -203,12 +203,6 @@ class HabrVacancyScraper(BaseScraper):
         try:
             textarea = page.locator(self.FILL_SELECTOR).first
 
-            # # Если textarea не прикреплена к DOM — пробуем открыть форму
-            # if textarea.count() == 0:
-            #     add_button = page.locator("text=Добавить сопроводительное")
-            #     if add_button.count() > 0:
-            #         add_button.first.click()
-
             # Ждём только появления в DOM (НЕ visible)
             textarea.wait_for(state="attached", timeout=7000)
 
@@ -227,3 +221,12 @@ class HabrVacancyScraper(BaseScraper):
         except Exception as e:
             logger.error("Не удалось отправить отклик: %s", e)
             raise
+
+    def has_next_page(self) -> bool:
+        """Проверяет наличие следующей страницы результатов."""
+        # TODO: реализовать пагинацию для Habr Career
+        return False
+
+    def go_to_next_page(self) -> None:
+        """Переходит на следующую страницу результатов."""
+        pass
