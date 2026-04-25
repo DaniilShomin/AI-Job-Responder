@@ -6,7 +6,6 @@ from app.vacancy_processor import VacancyProcessor
 from app.config import get_settings
 from app.utils import random_sleep, load_json, save_json
 from app.exceptions import (
-    OpenAIError,
     BrowserError,
     LoadingError,
     SavingError,
@@ -121,7 +120,9 @@ def run() -> None:
                         try:
                             scraper.close_vacancy_tab(new_tab)
                         except ScraperError as e:
-                            logger.warning("Ошибка при закрытии вкладки вакансии: %s", e)
+                            logger.warning(
+                                "Ошибка при закрытии вкладки вакансии: %s", e
+                            )
                             raise
                         vacancy_list.append(url)
                         random_sleep(2, 4)

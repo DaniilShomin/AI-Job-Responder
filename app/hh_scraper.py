@@ -29,8 +29,8 @@ class HHVacancyScraper(BaseScraper):
     def go_to_search(self) -> None:
         """Переходит на страницу поиска вакансий."""
         try:
-            self.page.goto(self.BASE_URL)
-            self.page.wait_for_load_state()
+            self.page.goto(self.BASE_URL, wait_until="domcontentloaded", timeout=60000)
+            self.page.wait_for_load_state("domcontentloaded")
             logger.info("Переход на hh.ru выполнен успешно")
         except Exception as e:
             logger.error("Ошибка при переходе на hh.ru: %s", e)
@@ -41,7 +41,7 @@ class HHVacancyScraper(BaseScraper):
             element = self.page.query_selector(self.LOGIN_SELECTOR)
             if element:
                 self.page.click("text=Войти")
-                self.page.wait_for_load_state()
+                self.page.wait_for_load_state("domcontentloaded")
                 self.page.click("text=Войти")
                 self.page.wait_for_selector('text="Резюме и профиль"')
                 logger.info("Вход выполнен успешно")
@@ -54,7 +54,7 @@ class HHVacancyScraper(BaseScraper):
     def navigate_to_job_search(self, search_url: str | None = None) -> None:
         try:
             if search_url:
-                self.page.goto(search_url)
+                self.page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
             else:
                 # Нажимаем кнопку поиска
                 self.page.locator(
@@ -62,7 +62,7 @@ class HHVacancyScraper(BaseScraper):
                 ).scroll_into_view_if_needed()
                 self.page.click(self.SEARCH_BUTTON_SELECTOR)
 
-            self.page.wait_for_load_state()
+            self.page.wait_for_load_state("domcontentloaded")
             logger.info("Переход на страницу поиска выполнен успешно")
         except Exception as e:
             logger.error("Ошибка при переходе на страницу поиска: %s", e)
@@ -110,7 +110,7 @@ class HHVacancyScraper(BaseScraper):
         with self.page.expect_event("popup") as popup_info:
             self.page.locator(f"a[href*='{vacancy_url}']").click()
         new_tab: Page = popup_info.value
-        new_tab.wait_for_load_state()
+        new_tab.wait_for_load_state("domcontentloaded")
         new_tab.bring_to_front()
         return new_tab
 
@@ -222,7 +222,7 @@ class HHVacancyScraper(BaseScraper):
         """Переходит на следующую страницу результатов."""
         try:
             self.page.click(self.NEXT_PAGE_SELECTOR)
-            self.page.wait_for_load_state()
+            self.page.wait_for_load_state("domcontentloaded")
             logger.info("Переход на следующую страницу выполнен")
         except Exception as e:
             logger.error("Ошибка при переходе на следующую страницу: %s", e)

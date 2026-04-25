@@ -23,6 +23,12 @@ class BrowserContext:
             self.context = self.browser.new_context()
 
         page = self.context.new_page()
+        page.route(
+            "**/*",
+            lambda route: route.abort()
+            if route.request.resource_type in ["image", "font", "media"]
+            else route.continue_(),
+        )
         scraper = self.scraper(page=page)
         return scraper
 
