@@ -1,7 +1,11 @@
+import logging
+
 from playwright.sync_api import sync_playwright
 
 from .base_scraper import BaseScraper
 from .config import Settings
+
+logger = logging.getLogger(__name__)
 
 
 class BrowserContext:
@@ -35,7 +39,10 @@ class BrowserContext:
     def __exit__(self, exc_type, exc, tb):
         try:
             if self.context:
-                self.context.storage_state(path="auth_state.json")
+                try:
+                    self.context.storage_state(path="auth_state.json")
+                except Exception:
+                    logger.warning("Не удалось сохранить состояние браузера: контекст уже закрыт")
         finally:
             if self.browser:
                 self.browser.close()

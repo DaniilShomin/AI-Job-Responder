@@ -11,18 +11,18 @@ logger = logging.getLogger(__name__)
 
 
 class AIClient:
-    BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
-
     def __init__(
         self,
         api_key: str,
         model: str,
+        base_url: str,
         timeout: int = 10,
         max_retries: int = 3,
         retry_delay: float = 2.0,
     ):
         self.api_key = api_key
         self.model = model
+        self.base_url = base_url
         self.timeout = timeout
         self.max_retries = max_retries
         self.retry_delay = retry_delay
@@ -41,7 +41,7 @@ class AIClient:
         for attempt in range(1, self.max_retries + 1):
             try:
                 response = requests.post(
-                    self.BASE_URL,
+                    f"{self.base_url}/chat/completions",
                     headers={
                         "Authorization": f"Bearer {self.api_key}",
                         "Content-Type": "application/json",
@@ -58,7 +58,9 @@ class AIClient:
                     e,
                 )
                 if attempt < self.max_retries:
-                    sleep_time = self.retry_delay * (2 ** (attempt - 1)) + random.uniform(0, 1)
+                    sleep_time = self.retry_delay * (
+                        2 ** (attempt - 1)
+                    ) + random.uniform(0, 1)
                     time.sleep(sleep_time)
                 continue
             except RequestException as e:
@@ -70,7 +72,9 @@ class AIClient:
                     e,
                 )
                 if attempt < self.max_retries:
-                    sleep_time = self.retry_delay * (2 ** (attempt - 1)) + random.uniform(0, 1)
+                    sleep_time = self.retry_delay * (
+                        2 ** (attempt - 1)
+                    ) + random.uniform(0, 1)
                     time.sleep(sleep_time)
                 continue
 
@@ -95,7 +99,9 @@ class AIClient:
                         f"Ошибка AI API (статус {response.status_code}): {error_message}"
                     )
                     if attempt < self.max_retries:
-                        sleep_time = self.retry_delay * (2 ** (attempt - 1)) + random.uniform(0, 1)
+                        sleep_time = self.retry_delay * (
+                            2 ** (attempt - 1)
+                        ) + random.uniform(0, 1)
                         logger.info("Повторная попытка через %.2f сек...", sleep_time)
                         time.sleep(sleep_time)
                     continue

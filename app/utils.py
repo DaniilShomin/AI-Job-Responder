@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import random
 import time
 from pathlib import Path
@@ -85,6 +86,27 @@ def save_json(filepath: str | Path, data: list[str]) -> None:
         error_msg = f"Неизвестная ошибка при записи: {e}"
         logger.error("%s: %s", error_msg, path)
         raise SavingError(f"{error_msg}: {path}")
+
+
+def save_json_atomic(filepath: str | Path, data: list[str]) -> None:
+    """Атомарно сохраняет список в JSON файл через временный файл.
+
+    При ошибке записи исходный файл остаётся неизменным.
+    """
+    path = Path(filepath)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    try:
+        with tmp_path.open("w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, path)
+    except Exception:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+        raise
 
 
 def load_text_file(filepath: str | Path) -> str:

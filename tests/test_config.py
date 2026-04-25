@@ -27,6 +27,7 @@ def test_get_settings_success(monkeypatch):
 
     settings = get_settings()
     assert settings.api_key == "test-key"
+    assert settings.api_base_url == "https://routerai.ru/api/v1"
     assert settings.model == "test-model"
     assert settings.headless is False
     assert settings.timeout == 20
@@ -40,6 +41,7 @@ def test_get_settings_uses_defaults(monkeypatch):
     monkeypatch.delenv("TIMEOUT", raising=False)
     monkeypatch.delenv("DATA_FILE", raising=False)
     settings = get_settings()
+    assert settings.api_base_url == "https://routerai.ru/api/v1"
     assert settings.model == "stepfun/step-3.5-flash:free"
     assert settings.headless is True
     assert settings.timeout == 10

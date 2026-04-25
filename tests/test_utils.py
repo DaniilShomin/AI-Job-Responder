@@ -1,10 +1,11 @@
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from app.exceptions import LoadingError
-from app.utils import load_json, load_text_file, save_json
+from app.utils import load_json, load_text_file, save_json, save_json_atomic
 
 
 def test_load_json_existing(tmp_path: Path):
@@ -48,3 +49,26 @@ def test_load_text_file_not_found_raises(tmp_path: Path):
     filepath = tmp_path / "missing.txt"
     with pytest.raises(LoadingError):
         load_text_file(filepath)
+
+
+def test_save_json_atomic_roundtrip(tmp_path: Path):
+    filepath = tmp_path / "atomic.json"
+    data = ["https://hh.ru/vacancy/1", "https://hh.ru/vacancy/2"]
+    save_json_atomic(filepath, data)
+    result = json.loads(filepath.read_text(encoding="utf-8"))
+    assert result == data
+    assert not (tmp_path / "atomic.json.tmp").exists()
+
+
+def test_save_json_atomic_leaves_original_on_failure(tmp_path: Path):
+    filepath = tmp_path / "atomic.json"
+    original_data = ["original"]
+    filepath.write_text(json.dumps(original_data), encoding="utf-8")
+
+    with patch("app.utils.json.dump", side_effect=TypeError("boom")):
+        with pytest.raises(TypeError):
+            save_json_atomic(filepath, ["new"])
+
+    result = json.loads(filepath.read_text(encoding="utf-8"))
+    assert result == original_data
+    assert not (tmp_path / "atomic.json.tmp").exists()

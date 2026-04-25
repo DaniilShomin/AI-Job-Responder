@@ -14,6 +14,7 @@ class Settings:
     """Настройки приложения"""
 
     api_key: str
+    api_base_url: str
     model: str
     hh_search_url: str | None
     habr_search_url: str | None
@@ -33,6 +34,7 @@ def get_settings() -> Settings:
 
     return Settings(
         api_key=api_key,
+        api_base_url=os.getenv("API_BASE_URL", "https://routerai.ru/api/v1"),
         model=os.getenv("MODEL", "stepfun/step-3.5-flash:free"),
         hh_search_url=os.getenv("HH_SEARCH_URL"),
         habr_search_url=os.getenv("HABR_SEARCH_URL"),
