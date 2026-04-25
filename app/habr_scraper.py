@@ -51,12 +51,14 @@ class HabrVacancyScraper(BaseScraper):
             logger.error("Ошибка при переходе на career.habr.com: %s", e)
             raise BrowserError(f"Не удалось открыть career.habr.com: {e}") from e
 
-    def login(self) -> None:
+    def login(self, timeout: int | None = None) -> None:
         try:
             element = self.page.query_selector(self.LOGIN_SELECTOR)
             if element:
-                logger.info("Ожидание входа")
-                self.page.wait_for_selector('button[title="Личное меню"]')
+                logger.info("Ожидание ручного входа (таймаут: %s мс)", timeout)
+                self.page.wait_for_selector(
+                    'button[title="Личное меню"]', timeout=timeout
+                )
                 logger.info("Вход выполнен успешно")
             else:
                 logger.info("Элемент входа не найден, возможно уже выполнен вход")

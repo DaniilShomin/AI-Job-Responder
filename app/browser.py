@@ -37,14 +37,19 @@ class BrowserContext:
         return scraper
 
     def __exit__(self, exc_type, exc, tb):
-        try:
-            if self.context:
-                try:
+        if exc_type is not KeyboardInterrupt:
+            try:
+                if self.context:
                     self.context.storage_state(path="auth_state.json")
-                except Exception:
-                    logger.warning("Не удалось сохранить состояние браузера: контекст уже закрыт")
-        finally:
+            except Exception:
+                logger.warning("Не удалось сохранить состояние браузера: контекст уже закрыт")
+        try:
             if self.browser:
                 self.browser.close()
+        except Exception:
+            pass
+        try:
             if self.playwright:
                 self.playwright.stop()
+        except Exception:
+            pass

@@ -13,7 +13,7 @@ class BaseScraper(ABC):
         pass
 
     @abstractmethod
-    def login(self) -> None:
+    def login(self, timeout: int | None = None) -> None:
         pass
 
     @abstractmethod

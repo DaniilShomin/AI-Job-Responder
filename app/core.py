@@ -63,115 +63,119 @@ def run() -> None:
     }
 
     for scraper_class, search_url in scrapers.items():
-        with BrowserContext(settings=settings, scraper=scraper_class) as scraper:
-            try:
-                scraper.go_to_search()
-                scraper.login()
-                random_sleep()
+        try:
+            with BrowserContext(settings=settings, scraper=scraper_class) as scraper:
+                try:
+                    scraper.go_to_search()
+                    scraper.login(timeout=settings.login_timeout)
+                    random_sleep()
 
-                scraper.navigate_to_job_search(search_url=search_url)
-                random_sleep()
-            except BrowserError as e:
-                logger.error("Ошибка браузера: %s", e)
-                return
-            except Exception as e:
-                logger.error("Неизвестная ошибка при инициализации скрейпера: %s", e)
-                return
+                    scraper.navigate_to_job_search(search_url=search_url)
+                    random_sleep()
+                except BrowserError as e:
+                    logger.error("Ошибка браузера: %s", e)
+                    return
+                except Exception as e:
+                    logger.error("Неизвестная ошибка при инициализации скрейпера: %s", e)
+                    return
 
-            filename = settings.data_file
-            try:
-                vacancy_list = load_json(filename)
-            except LoadingError as e:
-                logger.warning("Ошибка загрузки файла данных: %s", e)
-                vacancy_list = []
+                filename = settings.data_file
+                try:
+                    vacancy_list = load_json(filename)
+                except LoadingError as e:
+                    logger.warning("Ошибка загрузки файла данных: %s", e)
+                    vacancy_list = []
 
-            logger.info("Загружено элементов: %s", len(vacancy_list))
+                logger.info("Загружено элементов: %s", len(vacancy_list))
 
-            browser_closed = False
-            try:
-                while True:
-                    urls = scraper.get_job_urls()
-                    urls = [url for url in urls if url and "adsrv.hh.ru" not in url]
-                    logger.info("Найдено %s вакансий на странице", len(urls))
-                    for url in urls:
-                        try:
-                            if url in vacancy_list:
-                                logger.info("Вакансия уже обработана: %s", url)
-                                continue
-                            logger.info("Открытие вакансии: %s", url)
-                            new_tab = scraper.open_vacancy_in_new_tab(url)
-                            random_sleep()
-
-                            details = scraper.get_vacancy_details(new_tab)
-                            if details is None:
-                                logger.warning(
-                                    "Не удалось получить детали вакансии, пропускаем."
-                                )
-                                scraper.close_vacancy_tab(new_tab)
-                                random_sleep(2, 4)
-                                continue
-
-                            if not vacancy_processor.is_correct_profession(
-                                details["description"]
-                            ):
-                                logger.info("Профессия не подходит, пропускаем вакансию.")
-                                scraper.close_vacancy_tab(new_tab)
-                                vacancy_list.append(url)
-                                _safe_save(filename, vacancy_list)
-                                random_sleep(2, 4)
-                                continue
-                            response = vacancy_processor.generate_response(
-                                vacancy_title=details["title"],
-                                vacancy_description=details["description"],
-                            )
+                browser_closed = False
+                try:
+                    while True:
+                        urls = scraper.get_job_urls()
+                        urls = [url for url in urls if url and "adsrv.hh.ru" not in url]
+                        logger.info("Найдено %s вакансий на странице", len(urls))
+                        for url in urls:
                             try:
-                                scraper.response_to_vacancy(new_tab, response, random_sleep)
-                            except VacancySkipError as e:
-                                logger.warning("Вакансия пропущена: %s", e)
+                                if url in vacancy_list:
+                                    logger.info("Вакансия уже обработана: %s", url)
+                                    continue
+                                logger.info("Открытие вакансии: %s", url)
+                                new_tab = scraper.open_vacancy_in_new_tab(url)
+                                random_sleep()
+
+                                details = scraper.get_vacancy_details(new_tab)
+                                if details is None:
+                                    logger.warning(
+                                        "Не удалось получить детали вакансии, пропускаем."
+                                    )
+                                    scraper.close_vacancy_tab(new_tab)
+                                    random_sleep(2, 4)
+                                    continue
+
+                                if not vacancy_processor.is_correct_profession(
+                                    details["description"]
+                                ):
+                                    logger.info("Профессия не подходит, пропускаем вакансию.")
+                                    scraper.close_vacancy_tab(new_tab)
+                                    vacancy_list.append(url)
+                                    _safe_save(filename, vacancy_list)
+                                    random_sleep(2, 4)
+                                    continue
+                                response = vacancy_processor.generate_response(
+                                    vacancy_title=details["title"],
+                                    vacancy_description=details["description"],
+                                )
+                                try:
+                                    scraper.response_to_vacancy(new_tab, response, random_sleep)
+                                except VacancySkipError as e:
+                                    logger.warning("Вакансия пропущена: %s", e)
+                                    try:
+                                        scraper.close_vacancy_tab(new_tab)
+                                    except ScraperError:
+                                        pass
+                                    vacancy_list.append(url)
+                                    _safe_save(filename, vacancy_list)
+                                    continue
+                                except ScraperError as e:
+                                    logger.warning("Ошибка при отклике на вакансию: %s", e)
+                                    scraper.close_vacancy_tab(new_tab)
+                                    raise
+                                random_sleep(2, 4)
                                 try:
                                     scraper.close_vacancy_tab(new_tab)
-                                except ScraperError:
-                                    pass
+                                except ScraperError as e:
+                                    logger.warning(
+                                        "Ошибка при закрытии вкладки вакансии: %s", e
+                                    )
+                                    raise
                                 vacancy_list.append(url)
                                 _safe_save(filename, vacancy_list)
-                                continue
-                            except ScraperError as e:
-                                logger.warning("Ошибка при отклике на вакансию: %s", e)
-                                scraper.close_vacancy_tab(new_tab)
-                                raise
-                            random_sleep(2, 4)
-                            try:
-                                scraper.close_vacancy_tab(new_tab)
-                            except ScraperError as e:
-                                logger.warning(
-                                    "Ошибка при закрытии вкладки вакансии: %s", e
-                                )
-                                raise
-                            vacancy_list.append(url)
-                            _safe_save(filename, vacancy_list)
-                            random_sleep(2, 4)
-                        except Exception as e:
-                            logger.warning("Ошибка при обработке вакансий: %s", e)
-                            _safe_save(filename, vacancy_list)
-                            if "browser has been closed" in str(e).lower():
-                                logger.error(
-                                    "Браузер был закрыт. Завершение обработки."
-                                )
-                                browser_closed = True
-                                break
+                                random_sleep(2, 4)
+                            except Exception as e:
+                                logger.warning("Ошибка при обработке вакансий: %s", e)
+                                _safe_save(filename, vacancy_list)
+                                if "browser has been closed" in str(e).lower():
+                                    logger.error(
+                                        "Браузер был закрыт. Завершение обработки."
+                                    )
+                                    browser_closed = True
+                                    break
 
-                    if browser_closed:
-                        break
-
-                    try:
-                        if not scraper.has_next_page():
+                        if browser_closed:
                             break
-                        scraper.go_to_next_page()
-                        random_sleep()
-                    except Exception as e:
-                        logger.error("Ошибка при навигации по страницам: %s", e)
-                        break
-            except KeyboardInterrupt:
-                logger.info("Работа прервана пользователем (Ctrl+C)")
-            finally:
-                _safe_save(filename, vacancy_list)
+
+                        try:
+                            if not scraper.has_next_page():
+                                break
+                            scraper.go_to_next_page()
+                            random_sleep()
+                        except Exception as e:
+                            logger.error("Ошибка при навигации по страницам: %s", e)
+                            break
+                except KeyboardInterrupt:
+                    logger.info("Работа прервана пользователем (Ctrl+C)")
+                finally:
+                    _safe_save(filename, vacancy_list)
+        except KeyboardInterrupt:
+            logger.info("Работа прервана пользователем (Ctrl+C)")
+            break

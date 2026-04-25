@@ -36,14 +36,17 @@ class HHVacancyScraper(BaseScraper):
             logger.error("Ошибка при переходе на hh.ru: %s", e)
             raise BrowserError(f"Не удалось открыть hh.ru: {e}") from e
 
-    def login(self) -> None:
+    def login(self, timeout: int | None = None) -> None:
         try:
             element = self.page.query_selector(self.LOGIN_SELECTOR)
             if element:
+                logger.info("Ожидание ручного входа (таймаут: %s мс)", timeout)
                 self.page.click("text=Войти")
                 self.page.wait_for_load_state("domcontentloaded")
                 self.page.click("text=Войти")
-                self.page.wait_for_selector('text="Резюме и профиль"')
+                self.page.wait_for_selector(
+                    'text="Резюме и профиль"', timeout=timeout
+                )
                 logger.info("Вход выполнен успешно")
             else:
                 logger.info("Элемент входа не найден, возможно уже выполнен вход")

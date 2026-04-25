@@ -20,6 +20,7 @@ class Settings:
     habr_search_url: str | None
     headless: bool
     timeout: int
+    login_timeout: int
     data_file: str
     resume_file: str
     prompt_file: str
@@ -40,6 +41,7 @@ def get_settings() -> Settings:
         habr_search_url=os.getenv("HABR_SEARCH_URL"),
         headless=os.getenv("HEADLESS", "true").lower() == "true",
         timeout=int(os.getenv("TIMEOUT", "10")),
+        login_timeout=int(os.getenv("LOGIN_TIMEOUT", "60000")),
         data_file=os.getenv("DATA_FILE", "data.json"),
         resume_file=os.getenv("RESUME_FILE", "resume.txt"),
         prompt_file=os.getenv("PROMPT_FILE", "prompt.txt"),
