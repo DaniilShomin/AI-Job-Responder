@@ -89,6 +89,8 @@ def run() -> None:
                 logger.info("Загружено элементов: %s", len(vacancy_list))
 
                 browser_closed = False
+                limit_reached = False
+                response_count = 0
                 try:
                     while True:
                         urls = scraper.get_job_urls()
@@ -150,6 +152,23 @@ def run() -> None:
                                     raise
                                 vacancy_list.append(url)
                                 _safe_save(filename, vacancy_list)
+                                response_count += 1
+                                logger.info(
+                                    "Откликов отправлено на %s: %s",
+                                    scraper_class.__name__,
+                                    response_count,
+                                )
+                                if (
+                                    settings.response_limit_per_platform is not None
+                                    and response_count >= settings.response_limit_per_platform
+                                ):
+                                    logger.info(
+                                        "Достигнут лимит откликов (%s) для платформы %s",
+                                        settings.response_limit_per_platform,
+                                        scraper_class.__name__,
+                                    )
+                                    limit_reached = True
+                                    break
                                 random_sleep(2, 4)
                             except Exception as e:
                                 logger.warning("Ошибка при обработке вакансий: %s", e)
@@ -161,7 +180,7 @@ def run() -> None:
                                     browser_closed = True
                                     break
 
-                        if browser_closed:
+                        if browser_closed or limit_reached:
                             break
 
                         try:

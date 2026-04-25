@@ -24,6 +24,7 @@ def test_get_settings_success(monkeypatch):
     monkeypatch.setenv("MODEL", "test-model")
     monkeypatch.setenv("HEADLESS", "false")
     monkeypatch.setenv("TIMEOUT", "20")
+    monkeypatch.setenv("RESPONSE_LIMIT_PER_PLATFORM", "5")
 
     settings = get_settings()
     assert settings.api_key == "test-key"
@@ -32,6 +33,7 @@ def test_get_settings_success(monkeypatch):
     assert settings.headless is False
     assert settings.timeout == 20
     assert settings.hh_search_url is None
+    assert settings.response_limit_per_platform == 5
 
 
 def test_get_settings_uses_defaults(monkeypatch):
@@ -40,12 +42,21 @@ def test_get_settings_uses_defaults(monkeypatch):
     monkeypatch.delenv("HEADLESS", raising=False)
     monkeypatch.delenv("TIMEOUT", raising=False)
     monkeypatch.delenv("DATA_FILE", raising=False)
+    monkeypatch.delenv("RESPONSE_LIMIT_PER_PLATFORM", raising=False)
     settings = get_settings()
     assert settings.api_base_url == "https://routerai.ru/api/v1"
     assert settings.model == "stepfun/step-3.5-flash:free"
     assert settings.headless is True
     assert settings.timeout == 10
     assert settings.data_file == "data.json"
+    assert settings.response_limit_per_platform == 10
+
+
+def test_get_settings_empty_limit_is_none(monkeypatch):
+    monkeypatch.setenv("API_KEY", "key")
+    monkeypatch.setenv("RESPONSE_LIMIT_PER_PLATFORM", "")
+    settings = get_settings()
+    assert settings.response_limit_per_platform is None
 
 
 def test_get_settings_cached(monkeypatch):
