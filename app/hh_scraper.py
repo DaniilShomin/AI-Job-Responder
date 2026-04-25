@@ -4,7 +4,7 @@ from typing import Callable
 from playwright.sync_api import Page
 
 from app.base_scraper import BaseScraper
-from app.exceptions import BrowserError, ScraperError
+from app.exceptions import BrowserError, ScraperError, VacancySkipError
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ class HHVacancyScraper(BaseScraper):
         try:
             if not self._is_respond_button_present(page):
                 logger.warning("Кнопка 'Откликнуться' не найдена, пропуск вакансии.")
-                raise ScraperError("Кнопка 'Откликнуться' не найдена")
+                raise VacancySkipError("Кнопка 'Откликнуться' не найдена")
 
             page.click("text=Откликнуться")
             random_sleep(2, 4)
@@ -138,10 +138,12 @@ class HHVacancyScraper(BaseScraper):
             # Проверяем ограничения
             if self._is_vacancy_in_another_country(page):
                 logger.warning("Вакансия в другой стране, пропуск.")
-                raise ScraperError("Вакансия в другой стране")
+                raise VacancySkipError("Вакансия в другой стране")
             if self._requires_additional_questions(page):
                 logger.warning("Требуются дополнительные вопросы, пропуск.")
-                raise ScraperError("Требуются дополнительные вопросы работодателя")
+                raise VacancySkipError("Требуются дополнительные вопросы работодателя")
+        except VacancySkipError:
+            raise
         except ScraperError:
             raise
         except Exception as e:

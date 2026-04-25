@@ -38,3 +38,9 @@ class ScraperError(Exception):
     """Исключение, возникающее при ошибках скрейпинга данных."""
 
     pass
+
+
+class VacancySkipError(ScraperError):
+    """Исключение, возникающее когда вакансию нужно пропустить навсегда."""
+
+    pass

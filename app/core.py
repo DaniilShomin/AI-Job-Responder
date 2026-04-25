@@ -10,6 +10,7 @@ from app.exceptions import (
     LoadingError,
     SavingError,
     ScraperError,
+    VacancySkipError,
 )
 from app.base_scraper import BaseScraper
 from app.habr_scraper import HabrVacancyScraper
@@ -125,6 +126,15 @@ def run() -> None:
                             )
                             try:
                                 scraper.response_to_vacancy(new_tab, response, random_sleep)
+                            except VacancySkipError as e:
+                                logger.warning("Вакансия пропущена: %s", e)
+                                try:
+                                    scraper.close_vacancy_tab(new_tab)
+                                except ScraperError:
+                                    pass
+                                vacancy_list.append(url)
+                                _safe_save(filename, vacancy_list)
+                                continue
                             except ScraperError as e:
                                 logger.warning("Ошибка при отклике на вакансию: %s", e)
                                 scraper.close_vacancy_tab(new_tab)
