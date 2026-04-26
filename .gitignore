@@ -18,5 +18,5 @@ wheels/
 prompt.txt
 resume.txt
 auth_state.json
-data.json
+vacancies.db
 .mypy_cache/

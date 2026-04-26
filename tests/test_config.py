@@ -41,14 +41,14 @@ def test_get_settings_uses_defaults(monkeypatch):
     monkeypatch.delenv("MODEL", raising=False)
     monkeypatch.delenv("HEADLESS", raising=False)
     monkeypatch.delenv("TIMEOUT", raising=False)
-    monkeypatch.delenv("DATA_FILE", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.delenv("RESPONSE_LIMIT_PER_PLATFORM", raising=False)
     settings = get_settings()
     assert settings.api_base_url == "https://routerai.ru/api/v1"
     assert settings.model == "stepfun/step-3.5-flash:free"
     assert settings.headless is True
     assert settings.timeout == 10
-    assert settings.data_file == "data.json"
+    assert settings.database_url == "sqlite:///vacancies.db"
     assert settings.response_limit_per_platform == 10
 
 

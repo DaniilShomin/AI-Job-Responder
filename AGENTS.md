@@ -13,6 +13,7 @@
 ## Architecture
 - `main.py` delegates to `app.core.run()`.
 - `app/config.py` loads settings from `.env` via `dotenv`; `get_settings()` is `@lru_cache(maxsize=1)`.
+- `app/db.py` provides repository layer for SQLite / PostgreSQL (`processed_vacancies` table).
 - `app/browser.py` manages Playwright Chromium and persists auth state to `auth_state.json`.
 - Scrapers (`app/hh_scraper.py`, `app/habr_scraper.py`) subclass `app/base_scraper.py`.
 - `app/vacancy_processor.py` uses an LLM to filter vacancies by profession and generate cover letters.
@@ -21,7 +22,7 @@
 ## Key Files / State
 - `.env` — environment config (not committed).
 - `auth_state.json` — saved browser session (not committed). Delete to force re-login.
-- `data.json` — list of already-processed vacancy URLs (not committed).
+- `vacancies.db` (или PostgreSQL) — база обработанных вакансий с полем `status` (not committed).
 - `resume.txt` — user resume text used in LLM prompts (not committed).
 - `prompt.txt` — instructions/template for AI-generated responses (not committed).
 

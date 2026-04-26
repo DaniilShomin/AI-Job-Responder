@@ -44,3 +44,21 @@ class VacancySkipError(ScraperError):
     """Исключение, возникающее когда вакансию нужно пропустить навсегда."""
 
     pass
+
+
+class VacancySkipNoButtonError(VacancySkipError):
+    """Кнопка 'Откликнуться' не найдена."""
+
+    pass
+
+
+class VacancySkipWrongCountryError(VacancySkipError):
+    """Вакансия в другой стране."""
+
+    pass
+
+
+class VacancySkipQuestionsError(VacancySkipError):
+    """Требуются дополнительные вопросы работодателя."""
+
+    pass

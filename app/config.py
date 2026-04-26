@@ -21,7 +21,7 @@ class Settings:
     headless: bool
     timeout: int
     login_timeout: int
-    data_file: str
+    database_url: str
     resume_file: str
     prompt_file: str
     response_limit_per_platform: int | None
@@ -51,7 +51,7 @@ def get_settings() -> Settings:
         headless=os.getenv("HEADLESS", "true").lower() == "true",
         timeout=int(os.getenv("TIMEOUT", "10")),
         login_timeout=int(os.getenv("LOGIN_TIMEOUT", "60000")),
-        data_file=os.getenv("DATA_FILE", "data.json"),
+        database_url=os.getenv("DATABASE_URL", "sqlite:///vacancies.db"),
         resume_file=os.getenv("RESUME_FILE", "resume.txt"),
         prompt_file=os.getenv("PROMPT_FILE", "prompt.txt"),
         response_limit_per_platform=response_limit_per_platform,
