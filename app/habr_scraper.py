@@ -63,9 +63,9 @@ class HabrVacancyScraper(BaseScraper):
             element = self.page.query_selector(self.LOGIN_SELECTOR)
             if element:
                 logger.info("Ожидание ручного входа (таймаут: %s мс)", timeout)
-                self.page.wait_for_selector(
-                    'button[title="Личное меню"]', timeout=timeout
-                )
+                self.page.locator(
+                    'button[title="Личное меню"]:visible'
+                ).wait_for(timeout=timeout)
                 logger.info("Вход выполнен успешно")
             else:
                 logger.info("Элемент входа не найден, возможно уже выполнен вход")
