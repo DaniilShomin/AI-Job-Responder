@@ -64,3 +64,45 @@ def test_get_settings_cached(monkeypatch):
     s1 = get_settings()
     s2 = get_settings()
     assert s1 is s2
+
+
+def test_get_settings_correct_professions_parsed(monkeypatch):
+    monkeypatch.setenv("API_KEY", "key")
+    monkeypatch.setenv("CORRECT_PROFESSIONS", "Python Developer, Go разработчик")
+    settings = get_settings()
+    assert settings.correct_professions == ["python developer", "go разработчик"]
+
+
+def test_get_settings_correct_professions_default_none(monkeypatch):
+    monkeypatch.setenv("API_KEY", "key")
+    monkeypatch.delenv("CORRECT_PROFESSIONS", raising=False)
+    settings = get_settings()
+    assert settings.correct_professions is None
+
+
+def test_get_settings_empty_correct_professions_is_none(monkeypatch):
+    monkeypatch.setenv("API_KEY", "key")
+    monkeypatch.setenv("CORRECT_PROFESSIONS", "")
+    settings = get_settings()
+    assert settings.correct_professions is None
+
+
+def test_get_settings_grade_levels_parsed(monkeypatch):
+    monkeypatch.setenv("API_KEY", "key")
+    monkeypatch.setenv("GRADE_LEVELS", "Junior, Middle")
+    settings = get_settings()
+    assert settings.grade_levels == ["junior", "middle"]
+
+
+def test_get_settings_grade_levels_default_none(monkeypatch):
+    monkeypatch.setenv("API_KEY", "key")
+    monkeypatch.delenv("GRADE_LEVELS", raising=False)
+    settings = get_settings()
+    assert settings.grade_levels is None
+
+
+def test_get_settings_empty_grade_levels_is_none(monkeypatch):
+    monkeypatch.setenv("API_KEY", "key")
+    monkeypatch.setenv("GRADE_LEVELS", "")
+    settings = get_settings()
+    assert settings.grade_levels is None

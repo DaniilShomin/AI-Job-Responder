@@ -46,6 +46,8 @@ def run() -> None:
             ai_client=ai_client,
             resume_path=settings.resume_file,
             prompt_path=settings.prompt_file,
+            correct_professions=settings.correct_professions,
+            grade_levels=settings.grade_levels,
         )
     except LoadingError as e:
         logger.error("Ошибка инициализации процессора вакансий: %s", e)

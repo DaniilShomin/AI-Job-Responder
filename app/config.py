@@ -25,6 +25,8 @@ class Settings:
     resume_file: str
     prompt_file: str
     response_limit_per_platform: int | None
+    correct_professions: list[str] | None
+    grade_levels: list[str] | None
 
 
 @lru_cache(maxsize=1)
@@ -42,6 +44,18 @@ def get_settings() -> Settings:
     else:
         response_limit_per_platform = int(response_limit_raw)
 
+    correct_professions_raw = os.getenv("CORRECT_PROFESSIONS")
+    if correct_professions_raw:
+        correct_professions = [p.strip().lower() for p in correct_professions_raw.split(",")]
+    else:
+        correct_professions = None
+
+    grade_levels_raw = os.getenv("GRADE_LEVELS")
+    if grade_levels_raw:
+        grade_levels = [g.strip().lower() for g in grade_levels_raw.split(",")]
+    else:
+        grade_levels = None
+
     return Settings(
         api_key=api_key,
         api_base_url=os.getenv("API_BASE_URL", "https://routerai.ru/api/v1"),
@@ -55,4 +69,6 @@ def get_settings() -> Settings:
         resume_file=os.getenv("RESUME_FILE", "resume.txt"),
         prompt_file=os.getenv("PROMPT_FILE", "prompt.txt"),
         response_limit_per_platform=response_limit_per_platform,
+        correct_professions=correct_professions,
+        grade_levels=grade_levels,
     )
